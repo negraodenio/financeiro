@@ -1,0 +1,13 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+licenses.json
+rescue_vault.json
+*.log
+.pytest_cache/
+.vercel/
+*.db
+*.sqlite*
+.DS_Store
+Thumbs.db

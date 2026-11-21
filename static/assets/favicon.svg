@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0b1220"/>
+      <stop offset="100%" stop-color="#05080f"/>
+    </linearGradient>
+    <linearGradient id="shieldRim" x1="10" y1="6" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#94a3b8"/>
+      <stop offset="50%" stop-color="#334155"/>
+      <stop offset="100%" stop-color="#64748b"/>
+    </linearGradient>
+    <linearGradient id="bladeGrad" x1="14" y1="52" x2="52" y2="10" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="48%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bgGrad)"/>
+  <!-- Outer hexagonal armored shield -->
+  <polygon points="32,6 54,18 54,44 32,58 10,44 10,18" fill="#0f172a" stroke="url(#shieldRim)" stroke-width="2.5" stroke-linejoin="miter"/>
+  <!-- Left/Right faceted armor plates -->
+  <polygon points="32,10 14,20 14,42 32,53" fill="#1e293b"/>
+  <polygon points="32,10 50,20 50,42 32,53" fill="#0b1322"/>
+  <polyline points="14,20 32,10 50,20" stroke="#38bdf8" stroke-opacity="0.35" stroke-width="1"/>
+  <!-- Aggressive S-bolt razor strike piercing the shield -->
+  <polygon points="52,9 21,31 31,32 12,55 43,33 33,32" fill="#05080f" stroke="#05080f" stroke-width="3" stroke-linejoin="miter"/>
+  <polygon points="52,9 21,31 31,32 12,55 43,33 33,32" fill="url(#bladeGrad)"/>
+  <!-- Chrome specular ridge -->
+  <polyline points="49,12 24,30 33,31" stroke="#f8fafc" stroke-opacity="0.85" stroke-width="1.2" stroke-linecap="square"/>
+</svg>

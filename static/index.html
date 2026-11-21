@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#060911" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="description" content="Terminal autenticado da Scudex para análise quantitativa determinística, Backtest A/B Justo, Escudo Familiar e alertas cambiais." />
+  <title>Terminal Scudex — Análise Quant, Alertas USD/EUR e Histórico</title>
+  <link rel="icon" type="image/svg+xml" href="/static/assets/favicon.svg" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    body {
+      background-color: #060911;
+      color: #e2e8f0;
+      font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    }
+    .surface-card {
+      background: #0c1220;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+    }
+    .mono {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased">
+
+  <!-- Top Navbar -->
+  <header class="border-b border-slate-800/80 bg-[#060911]/90 sticky top-0 z-30 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <a href="/" class="flex items-center gap-2.5 group">
+          <img src="/static/assets/scudex-logo.png" alt="Scudex" class="w-9 h-9 rounded-xl object-cover border border-emerald-500/35 shadow-md shadow-emerald-500/15" />
+          <div>
+            <div class="text-sm sm:text-base font-bold text-white group-hover:text-emerald-300 transition">Scudex</div>
+            <div class="text-[11px] text-slate-400">Terminal Determinístico &amp; Alertas</div>
+          </div>
+        </a>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <span id="planBadge" class="px-2.5 py-1 rounded-full bg-slate-900 text-slate-300 border border-slate-700 mono">
+          Conta: --
+        </span>
+        <span id="dataSourceBadge" class="px-2.5 py-1 rounded-full bg-slate-900 text-slate-300 border border-slate-700 mono">
+          Conectando...
+        </span>
+        <span id="engineBadge" class="hidden sm:inline-block px-2.5 py-1 rounded-full bg-slate-900 text-slate-400 border border-slate-800 mono">
+          Scudex Quant v2
+        </span>
+        <a href="/" class="px-2.5 py-1 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition">
+          Início
+        </a>
+        <button onclick="logoutToLanding()" class="px-2.5 py-1 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition">
+          Sair
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- Quota / Status Alert -->
+    <div id="quotaBanner" class="hidden text-xs px-4 py-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-200 flex flex-wrap items-center justify-between gap-2">
+      <span id="quotaBannerText">--</span>
+      <button type="button" onclick="switchWorkspaceTab('alerts')" class="px-3 py-1 rounded-lg bg-amber-400 text-slate-950 font-bold">
+        Ir para Alertas EUR/BRL
+      </button>
+    </div>
+
+    <!-- Quick Presets & Controls Bar -->
+    <section class="surface-card rounded-2xl p-4 sm:p-5 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <span class="text-slate-400 font-medium mr-1">Atalhos rápidos:</span>
+          <button type="button" onclick="quickSelectAsset('USDT/BRL')" class="px-3 py-1 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 font-semibold transition">
+            Dólar (USDT/BRL)
+          </button>
+          <button type="button" onclick="quickSelectAsset('BTC/BRL')" class="px-3 py-1 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold transition">
+            Bitcoin R$ (BTC/BRL)
+          </button>
+          <button type="button" onclick="quickSelectAsset('BTC/USDT')" class="px-3 py-1 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold transition">
+            Bitcoin US$ (BTC/USDT)
+          </button>
+          <button type="button" onclick="quickSelectAsset('SOL/BRL')" class="px-3 py-1 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold transition">
+            Solana R$ (SOL/BRL)
+          </button>
+        </div>
+        <span id="marketPairLabel" class="text-xs text-slate-400 mono">--</span>
+      </div>
+
+      <form id="analyzeForm" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 items-end">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1 font-medium">Corretora</label>
+          <select id="exchange" class="w-full bg-[#060911] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+            <option value="binance">Binance</option>
+            <option value="bybit">Bybit</option>
+            <option value="okx">OKX</option>
+            <option value="kraken">Kraken</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs text-slate-400 mb-1 font-medium">Ativo</label>
+          <select id="symbol" class="w-full bg-[#060911] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+            <option value="USDT/BRL">USDT/BRL (Dólar Digital)</option>
+            <option value="BTC/BRL">BTC/BRL (Bitcoin R$)</option>
+            <option value="ETH/BRL">ETH/BRL (Ethereum R$)</option>
+            <option value="SOL/BRL">SOL/BRL (Solana R$)</option>
+            <option value="BTC/USDT">BTC/USDT</option>
+            <option value="ETH/USDT">ETH/USDT</option>
+            <option value="SOL/USDT">SOL/USDT</option>
+            <option value="BNB/USDT">BNB/USDT</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs text-slate-400 mb-1 font-medium">Gráfico</label>
+          <select id="timeframe" class="w-full bg-[#060911] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+            <option value="15m">15 minutos</option>
+            <option value="1h" selected>1 hora</option>
+            <option value="4h">4 horas</option>
+            <option value="1d">Diário</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs text-slate-400 mb-1 font-medium">Estratégia A/B</label>
+          <select id="strategy" class="w-full bg-[#060911] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+            <option value="trend_ema_crossover">Seguidor de Tendência</option>
+            <option value="bollinger_mean_reversion">Reversão à Média</option>
+            <option value="momentum_breakout">Rompimento com Volume</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs text-slate-400 mb-1 font-medium">Banca Simulada</label>
+          <input id="capital" type="number" min="50" step="100" value="10000"
+            class="w-full bg-[#060911] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:outline-none focus:border-emerald-500" />
+        </div>
+
+        <div>
+          <label class="block text-xs text-slate-400 mb-1 font-medium">Perda Máx./Op (%)</label>
+          <input id="riskPct" type="number" min="0.1" max="10" step="0.1" value="1.0"
+            class="w-full bg-[#060911] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:outline-none focus:border-emerald-500" />
+        </div>
+
+        <div class="col-span-2 sm:col-span-3 lg:col-span-1">
+          <button id="runBtn" type="submit"
+            class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2 px-4 rounded-lg text-sm transition">
+            Atualizar Análise
+          </button>
+        </div>
+      </form>
+      <div id="fallbackBanner" class="hidden text-xs px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300"></div>
+    </section>
+
+    <!-- Workspace Navigation Tabs -->
+    <div class="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+      <button type="button" id="wsTabOverview" onclick="switchWorkspaceTab('overview')"
+        class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-emerald-500 text-slate-950 transition">
+        Resumo &amp; Leitura
+      </button>
+      <button type="button" id="wsTabAlerts" onclick="switchWorkspaceTab('alerts')"
+        class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-600 transition">
+        Alertas EUR/BRL &amp; Telegram
+      </button>
+      <button type="button" id="wsTabShield" onclick="switchWorkspaceTab('shield')"
+        class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-600 transition">
+        Escudo Familiar &amp; DCA
+      </button>
+      <button type="button" id="wsTabBacktest" onclick="switchWorkspaceTab('backtest')"
+        class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-600 transition">
+        Backtest A/B Justo
+      </button>
+      <button type="button" id="wsTabChannels" onclick="switchWorkspaceTab('channels')"
+        class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-600 transition">
+        Boletins &amp; Histórico
+      </button>
+    </div>
+
+    <!-- TAB 1: Resumo & Leitura -->
+    <div id="wsOverview" class="space-y-6">
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div class="lg:col-span-7 surface-card rounded-2xl p-5 flex flex-col justify-between space-y-4">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">
+                Leitura do Disjuntor de Risco (Uso Educacional)
+              </div>
+              <div class="mt-2 flex flex-wrap items-center gap-2.5">
+                <span id="verdictBadge" class="text-base sm:text-lg font-bold px-3.5 py-1.5 rounded-lg border">
+                  Analisando...
+                </span>
+                <span id="regimePill" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-900 text-slate-300 border border-slate-700">
+                  Clima: --
+                </span>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-xs text-slate-400">Cotação Atual</div>
+              <div id="lastPrice" class="text-2xl font-bold text-white mono">--</div>
+              <div id="priceChange" class="text-xs mono text-slate-400">--</div>
+            </div>
+          </div>
+
+          <div class="bg-[#060911] border border-slate-800 rounded-xl p-4">
+            <div class="text-xs text-emerald-400 font-semibold mb-1">Resumo Técnico Determinístico</div>
+            <p id="executiveSummary" class="text-sm text-slate-200 leading-relaxed">
+              Consultando livro de ofertas e calculando limites matemáticos...
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div class="bg-[#060911] rounded-lg p-3 border border-slate-800">
+              <div class="text-slate-400">Pontuação Geral</div>
+              <div id="combinedScore" class="text-base font-bold mono text-white mt-0.5">--</div>
+            </div>
+            <div class="bg-[#060911] rounded-lg p-3 border border-slate-800">
+              <div class="text-slate-400">Força Curta (RSI)</div>
+              <div id="rsiValue" class="text-base font-bold mono text-white mt-0.5">--</div>
+            </div>
+            <div class="bg-[#060911] rounded-lg p-3 border border-slate-800">
+              <div class="text-slate-400">Diferença Compra/Venda</div>
+              <div id="spreadValue" class="text-base font-bold mono text-white mt-0.5">--</div>
+            </div>
+            <div class="bg-[#060911] rounded-lg p-3 border border-slate-800">
+              <div class="text-slate-400">Pressão no Book</div>
+              <div id="imbalanceValue" class="text-base font-bold mono text-white mt-0.5">--</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 surface-card rounded-2xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-200">
+                Simulador de Lote Seguro
+              </h2>
+              <span id="execStatusPill" class="text-xs px-2.5 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-700 mono">--</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">
+              Dimensionamento matemático por ATR para limitar perdas simuladas — não é ordem real.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 my-4 text-sm">
+            <div class="bg-[#060911] border border-slate-800 rounded-xl p-3">
+              <div class="text-xs text-slate-400">Preço de Referência</div>
+              <div id="planEntry" class="text-base font-bold mono text-white mt-0.5">--</div>
+            </div>
+            <div class="bg-[#060911] border border-slate-800 rounded-xl p-3">
+              <div class="text-xs text-slate-400">Stop Técnico (2×ATR)</div>
+              <div id="planStop" class="text-base font-bold mono text-rose-400 mt-0.5">--</div>
+            </div>
+            <div class="bg-[#060911] border border-slate-800 rounded-xl p-3">
+              <div class="text-xs text-slate-400">Alvo Ref. 1.5R</div>
+              <div id="planTp1" class="text-base font-bold mono text-emerald-400 mt-0.5">--</div>
+            </div>
+            <div class="bg-[#060911] border border-slate-800 rounded-xl p-3">
+              <div class="text-xs text-slate-400">Alvo Ref. 3.0R</div>
+              <div id="planTp2" class="text-base font-bold mono text-emerald-300 mt-0.5">--</div>
+            </div>
+            <div class="bg-[#060911] border border-slate-800 rounded-xl p-3">
+              <div class="text-xs text-slate-400">Lote Simulado</div>
+              <div id="planSizeUsdt" class="text-base font-bold mono text-cyan-300 mt-0.5">--</div>
+            </div>
+            <div class="bg-[#060911] border border-slate-800 rounded-xl p-3">
+              <div class="text-xs text-slate-400">Perda Máx. Simulada</div>
+              <div id="planMaxLoss" class="text-base font-bold mono text-amber-300 mt-0.5">--</div>
+            </div>
+          </div>
+
+          <div class="text-xs text-slate-400 flex items-center justify-between border-t border-slate-800 pt-3">
+            <span>Quantidade: <strong id="planSizeAsset" class="text-slate-200 mono">--</strong></span>
+            <span>Distância do Stop: <strong id="planStopDist" class="text-slate-200 mono">--</strong></span>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-300">
+            Parecer dos 4 Módulos Quantitativos
+          </h2>
+        </div>
+        <div id="agentsGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4"></div>
+      </section>
+    </div>
+
+    <!-- TAB 2: Alertas EUR/BRL & Telegram -->
+    <div id="wsAlerts" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Vincular Telegram -->
+        <div class="lg:col-span-5 surface-card rounded-2xl p-5 space-y-4">
+          <div>
+            <h2 class="text-base font-bold text-white">1. Vincular Seu Telegram</h2>
+            <p class="text-xs text-slate-400 mt-1">
+              Envie <span class="mono text-emerald-300">/id</span> para o bot da Scudex no Telegram, copie o número retornado e salve aqui para receber seus alertas automáticos.
+            </p>
+            <div id="appTelegramBotLink" class="pt-2"></div>
+          </div>
+          <form id="linkTelegramForm" class="space-y-3">
+            <div>
+              <label class="block text-xs text-slate-300 mb-1">Telegram Chat ID</label>
+              <input id="profileTelegramInput" type="text" placeholder="Ex: 123456789"
+                class="w-full bg-[#060911] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:outline-none focus:border-emerald-500" />
+            </div>
+            <button id="saveTelegramBtn" type="submit"
+              class="w-full py-2 px-4 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 font-semibold text-xs transition">
+              Salvar Chat ID na Conta
+            </button>
+          </form>
+          <div id="tgLinkStatus" class="hidden text-xs px-3 py-2 rounded-lg border"></div>
+        </div>
+
+        <!-- Criar Alerta de Câmbio -->
+        <div class="lg:col-span-7 surface-card rounded-2xl p-5 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 class="text-base font-bold text-white">2. Criar Alerta Proativo de Câmbio</h2>
+              <p class="text-xs text-slate-400 mt-0.5">
+                Plano gratuito: 1 alerta ativo. Planos pagos: até 20 alertas simultâneos.
+              </p>
+            </div>
+            <span id="alertsTierPill" class="text-[11px] px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-slate-300 mono">--</span>
+          </div>
+
+          <form id="createAlertForm" class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Par</label>
+              <select id="alertSymbol" class="w-full bg-[#060911] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                <option value="EUR/BRL">EUR/BRL</option>
+                <option value="USDT/BRL">USDT/BRL</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Condição</label>
+              <select id="alertDirection" class="w-full bg-[#060911] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                <option value="ABOVE">Subir para &gt;=</option>
+                <option value="BELOW">Cair para &lt;=</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Cotação Meta (R$)</label>
+              <input id="alertTargetRate" type="number" step="0.01" min="0.1" value="6.45" required
+                class="w-full bg-[#060911] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:outline-none focus:border-emerald-500" />
+            </div>
+            <button id="createAlertBtn" type="submit"
+              class="w-full py-2 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition">
+              Criar Alerta
+            </button>
+          </form>
+
+          <div id="alertActionStatus" class="hidden text-xs px-3 py-2 rounded-lg border"></div>
+
+          <div class="overflow-x-auto rounded-xl border border-slate-800 bg-[#060911]">
+            <table class="w-full text-xs">
+              <thead class="bg-slate-900 text-slate-400 uppercase">
+                <tr>
+                  <th class="text-left py-2.5 px-3">Par</th>
+                  <th class="text-left py-2.5 px-3">Regra</th>
+                  <th class="text-right py-2.5 px-3">Meta</th>
+                  <th class="text-left py-2.5 px-3">Canal</th>
+                  <th class="text-right py-2.5 px-3">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="alertsTableBody" class="divide-y divide-slate-800 mono">
+                <tr><td colspan="5" class="py-3 text-center text-slate-500 font-sans">Carregando alertas...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Escudo Familiar & Smart DCA Honesto -->
+    <div id="wsShield" class="hidden space-y-6">
+      <section class="surface-card rounded-2xl p-5 space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-bold text-white">Parâmetros da Sua Realidade Familiar (Em Reais)</h2>
+            <p class="text-xs text-slate-400">Separado da banca simulada de trading. Ajuste e clique em Recalcular Escudo.</p>
+          </div>
+          <button type="button" onclick="runAnalysis()"
+            class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition">
+            Recalcular Escudo Familiar
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center bg-[#060911] p-4 rounded-xl border border-slate-800">
+          <div>
+            <label class="block text-xs text-emerald-300 mb-1 font-medium">Reserva Familiar Atual (R$)</label>
+            <input id="availableCapitalBrl" type="number" min="100" step="500" value="10000"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-xs text-emerald-300 mb-1 font-medium">Aporte Mensal Possível (R$)</label>
+            <input id="monthlyContribution" type="number" min="50" step="50" value="500"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-xs text-emerald-300 mb-1 font-medium">Custo Fixo da Casa (R$/mês)</label>
+            <input id="monthlyExpenses" type="number" min="100" step="100" value="3000"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:outline-none focus:border-emerald-500" />
+          </div>
+          <label class="flex items-center gap-2.5 text-xs sm:text-sm text-slate-200 cursor-pointer pt-2 sm:pt-4">
+            <input id="hasEmergencyFund" type="checkbox" class="w-4 h-4 rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500" />
+            <span>Já tenho reserva (3–6 meses)</span>
+          </label>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <p id="crisisSummary" class="text-sm text-slate-200 max-w-3xl">--</p>
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <span id="alertBadge" class="px-3 py-1 rounded-full border font-semibold">--</span>
+            <span id="runwayBadge" class="px-3 py-1 rounded-full bg-slate-900 text-slate-200 border border-slate-700 mono">Fôlego: --</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div class="lg:col-span-5 bg-[#060911] border border-slate-800 rounded-xl p-4 space-y-2.5">
+            <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Termômetro de Aporte Hoje</div>
+            <div id="windowBadge" class="inline-block text-xs font-bold px-2.5 py-1 rounded-lg border">--</div>
+            <p id="windowAdvice" class="text-xs sm:text-sm text-slate-300 leading-relaxed">--</p>
+            <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+              <span class="text-slate-400">Parcela de referência hoje:</span>
+              <strong id="suggestedTodayBrl" class="text-base text-emerald-300 mono">--</strong>
+            </div>
+          </div>
+
+          <div class="lg:col-span-7 bg-[#060911] border border-slate-800 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Comparativo Honesto: DCA Fixo vs. Smart DCA (incl. Caixa)</span>
+              <span id="dcaDaysBadge" class="text-[11px] text-cyan-300 mono">--</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+              <div class="bg-slate-900/70 rounded-lg p-2.5 border border-slate-800">
+                <div class="text-slate-400">Média DCA Fixo</div>
+                <div id="dcaAvgFixed" class="text-sm font-bold text-slate-200 mono mt-0.5">--</div>
+              </div>
+              <div class="bg-slate-900/70 rounded-lg p-2.5 border border-emerald-500/30">
+                <div class="text-emerald-300">Média Smart DCA</div>
+                <div id="dcaAvgSmart" class="text-sm font-bold text-emerald-300 mono mt-0.5">--</div>
+              </div>
+              <div class="bg-slate-900/70 rounded-lg p-2.5 border border-slate-800">
+                <div class="text-slate-400">Patrimônio DCA Fixo</div>
+                <div id="dcaFinalFixed" class="text-sm font-bold text-slate-200 mono mt-0.5">--</div>
+              </div>
+              <div class="bg-slate-900/70 rounded-lg p-2.5 border border-cyan-500/30">
+                <div class="text-cyan-300">Smart + Caixa</div>
+                <div id="dcaFinalSmart" class="text-sm font-bold text-cyan-300 mono mt-0.5">--</div>
+                <div id="dcaCashLeft" class="text-[10px] text-slate-400 mt-0.5 mono">--</div>
+              </div>
+            </div>
+            <p id="antiScamBanner" class="text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2">--</p>
+          </div>
+        </div>
+
+        <div>
+          <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-2">
+            Divisão Educativa em Baldes (Base R$)
+          </div>
+          <div id="bucketsGrid" class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-3"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 4: Backtest A/B Justo (Lightweight Charts) -->
+    <div id="wsBacktest" class="hidden">
+      <section class="surface-card rounded-2xl p-5 space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-bold text-white">
+              Comparativo A/B Justo: Sem Filtro vs. Com Filtro de Regime
+            </h2>
+            <p id="strategyDesc" class="text-xs text-slate-400 mt-0.5">--</p>
+            <p id="methodologyNote" class="text-xs text-emerald-300/90 mt-1">--</p>
+          </div>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <span id="blockedTradesBadge" class="px-3 py-1.5 rounded-lg bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-semibold mono">--</span>
+            <span id="ddSavedBadge" class="px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold mono">--</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+          <div class="lg:col-span-8 bg-[#060911] border border-slate-800 rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between text-xs text-slate-400">
+              <span>Curva de Capital (Verde = Com Filtro • Cinza = Sem Filtro, mesmo lote ATR)</span>
+            </div>
+            <div id="equityChartContainer" class="w-full h-72"></div>
+          </div>
+          <div class="lg:col-span-4 overflow-hidden rounded-xl border border-slate-800 bg-[#060911]">
+            <table class="w-full text-xs">
+              <thead class="bg-slate-900 text-slate-400 uppercase">
+                <tr>
+                  <th class="text-left py-2.5 px-3">Métrica</th>
+                  <th class="text-right py-2.5 px-3">Sem Filtro</th>
+                  <th class="text-right py-2.5 px-3 text-emerald-400">Com Filtro</th>
+                </tr>
+              </thead>
+              <tbody id="abTableBody" class="divide-y divide-slate-800 mono"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 5: Boletins & Histórico -->
+    <div id="wsChannels" class="hidden space-y-6">
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="surface-card rounded-2xl p-5 space-y-3 border-emerald-500/30">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-emerald-300">Boletim Pronto para WhatsApp</h3>
+            <span class="text-[11px] text-emerald-400 mono">Formato Nativo</span>
+          </div>
+          <pre id="whatsappPreviewPre" class="bg-[#060911] border border-slate-800 rounded-xl p-3.5 text-xs text-slate-200 mono whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto"></pre>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <button type="button" onclick="copyWhatsappReport()"
+              class="bg-slate-900 hover:bg-slate-800 text-slate-100 border border-slate-700 rounded-lg px-3 py-2 text-xs font-semibold transition">
+              Copiar Boletim
+            </button>
+            <button type="button" onclick="openWhatsappDirect()"
+              class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-lg px-3 py-2 text-xs font-semibold transition">
+              Abrir no WhatsApp
+            </button>
+          </div>
+          <div id="waStatusMsg" class="hidden text-xs px-3 py-2 rounded-lg border bg-emerald-500/15 border-emerald-500/30 text-emerald-300"></div>
+        </div>
+
+        <div class="surface-card rounded-2xl p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Enviar para Meu Telegram Vinculado</h3>
+            <span class="text-[11px] text-slate-400 mono">Planos Pagos</span>
+          </div>
+          <pre id="telegramPreviewPre" class="bg-[#060911] border border-slate-800 rounded-xl p-3.5 text-xs text-slate-200 mono whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto"></pre>
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[11px] text-slate-400">Usa o Chat ID vinculado na aba Alertas e o bot oficial do servidor.</span>
+            <button id="tgSendBtn" type="button" onclick="sendToTelegram()"
+              class="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 rounded-lg px-4 py-2 text-xs font-semibold transition shrink-0">
+              Enviar para Meu Telegram
+            </button>
+          </div>
+          <div id="tgStatusMsg" class="hidden text-xs px-3 py-2 rounded-lg border"></div>
+        </div>
+      </section>
+
+      <section id="historySection" class="surface-card rounded-2xl p-5 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-200">Meu Histórico Salvo na Nuvem</h3>
+            <p id="historyHint" class="text-xs text-slate-400">Sincronizado com sua conta Supabase.</p>
+          </div>
+          <button type="button" onclick="loadUserHistory()"
+            class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-xs text-slate-200 border border-slate-700 transition">
+            Atualizar Histórico
+          </button>
+        </div>
+        <div class="overflow-x-auto rounded-xl border border-slate-800 bg-[#060911]">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-900 text-slate-400 uppercase">
+              <tr>
+                <th class="text-left py-2.5 px-3">Data</th>
+                <th class="text-left py-2.5 px-3">Ativo</th>
+                <th class="text-left py-2.5 px-3">Leitura</th>
+                <th class="text-left py-2.5 px-3">Regime</th>
+                <th class="text-right py-2.5 px-3">Cotação</th>
+                <th class="text-right py-2.5 px-3 text-emerald-300">DD Reduzido</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody" class="divide-y divide-slate-800 mono">
+              <tr><td colspan="6" class="py-3 text-center text-slate-500 font-sans">Nenhuma análise gravada ainda.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <details class="surface-card rounded-xl p-4">
+        <summary class="text-xs font-semibold uppercase tracking-wider text-slate-400 cursor-pointer hover:text-white">
+          Modo Técnico (Payload JSON Educacional Non-Custodial)
+        </summary>
+        <pre id="ccxtPayloadPre" class="mt-3 bg-[#060911] border border-slate-800 rounded-lg p-3 text-xs text-cyan-200 mono overflow-x-auto max-h-64"></pre>
+      </details>
+    </div>
+  </main>
+
+  <script>
+    if (!localStorage.getItem("qg_access_token")) {
+      window.location.href = "/?login=1";
+    }
+
+    let equityChart = null;
+    let rawLineSeries = null;
+    let guardedLineSeries = null;
+    let activeCurrencySymbol = "R$";
+    let refreshPromise = null;
+
+    const VERDICT_PT = {
+      APPROVE_LONG: "Cenário Técnico: Alta",
+      APPROVE_SHORT: "Cenário Técnico: Baixa",
+      "REDUCE_SIZE_50%": "Lote Reduzido (50%)",
+      VETO_PROTECTION: "Bloqueado pelo Disjuntor",
+      WAIT_NEUTRAL: "Neutro — Aguardar",
+    };
+
+    const REGIME_PT = {
+      TRENDING_CLEAN: "Tendência Limpa",
+      MEAN_REVERTING: "Equilíbrio / Lateral",
+      HIGH_VOL_CHOP: "Mercado Serra-Elétrica",
+      EXTREME_SHOCK: "Choque Extremo de Risco",
+    };
+
+    const SIGNAL_PT = {
+      BULLISH: "Alta",
+      BEARISH: "Baixa",
+      NEUTRAL: "Neutro",
+      FAVORABLE: "Favorável",
+      CAUTION: "Cautela",
+      RISK_OFF: "Risco Extremo",
+      ...VERDICT_PT,
+    };
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function logoutToLanding() {
+      localStorage.removeItem("qg_access_token");
+      localStorage.removeItem("qg_refresh_token");
+      localStorage.removeItem("qg_license_info");
+      window.location.href = "/?login=1";
+    }
+
+    async function refreshSessionToken() {
+      if (refreshPromise) return refreshPromise;
+      const rt = localStorage.getItem("qg_refresh_token");
+      if (!rt) return null;
+
+      refreshPromise = (async () => {
+        try {
+          const res = await fetch("/api/auth/refresh", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh_token: rt }),
+          });
+          if (!res.ok) return null;
+          const data = await res.json();
+          if (data.access_token) {
+            localStorage.setItem("qg_access_token", data.access_token);
+            if (data.refresh_token) localStorage.setItem("qg_refresh_token", data.refresh_token);
+            if (data.license_info) renderLicenseBadge(data.license_info);
+            return data.access_token;
+          }
+          return null;
+        } catch (_) {
+          return null;
+        } finally {
+          refreshPromise = null;
+        }
+      })();
+      return refreshPromise;
+    }
+
+    async function apiFetch(url, options = {}) {
+      const token = localStorage.getItem("qg_access_token");
+      if (!token) {
+        logoutToLanding();
+        throw new Error("Sessão ausente.");
+      }
+      const hdrs = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
+      let res = await fetch(url, { ...options, headers: hdrs });
+      if (res.status === 401) {
+        const newToken = await refreshSessionToken();
+        if (newToken) {
+          const retryHdrs = { ...(options.headers || {}), Authorization: `Bearer ${newToken}` };
+          res = await fetch(url, { ...options, headers: retryHdrs });
+        }
+      }
+      if (res.status === 401) {
+        logoutToLanding();
+        throw new Error("Sessão expirada.");
+      }
+      return res;
+    }
+
+    function switchWorkspaceTab(tab) {
+      const panels = {
+        overview: "wsOverview",
+        alerts: "wsAlerts",
+        shield: "wsShield",
+        backtest: "wsBacktest",
+        channels: "wsChannels",
+      };
+      const btns = {
+        overview: "wsTabOverview",
+        alerts: "wsTabAlerts",
+        shield: "wsTabShield",
+        backtest: "wsTabBacktest",
+        channels: "wsTabChannels",
+      };
+      for (const k of Object.keys(panels)) {
+        document.getElementById(panels[k]).classList.toggle("hidden", k !== tab);
+        document.getElementById(btns[k]).className = k === tab
+          ? "px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-emerald-500 text-slate-950 transition"
+          : "px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-600 transition";
+      }
+      if (tab === "backtest" && equityChart) {
+        const el = document.getElementById("equityChartContainer");
+        if (el && el.clientWidth > 0) {
+          equityChart.applyOptions({ width: el.clientWidth });
+          equityChart.timeScale().fitContent();
+        }
+      }
+      if (tab === "alerts") {
+        loadAlerts();
+      }
+    }
+
+    function quickSelectAsset(sym) {
+      document.getElementById("symbol").value = sym;
+      runAnalysis();
+    }
+
+    function fmtNum(n, decimals = 2) {
+      if (n === null || n === undefined || Number.isNaN(Number(n))) return "--";
+      return Number(n).toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    }
+
+    function fmtPrice(p, curr = activeCurrencySymbol) {
+      const val = Number(p);
+      if (Number.isNaN(val)) return "--";
+      const prefix = curr === "R$" ? "R$ " : "$";
+      if (val >= 10) return prefix + fmtNum(val, 2);
+      return prefix + fmtNum(val, 4);
+    }
+
+    function signalBadgeClass(sig) {
+      if (["BULLISH", "APPROVE_LONG", "FAVORABLE"].includes(sig)) {
+        return "bg-emerald-500/15 text-emerald-300 border-emerald-500/40";
+      }
+      if (["BEARISH", "APPROVE_SHORT", "RISK_OFF"].includes(sig)) {
+        return "bg-rose-500/15 text-rose-300 border-rose-500/40";
+      }
+      if (["REDUCE_SIZE_50%", "CAUTION"].includes(sig)) {
+        return "bg-amber-500/15 text-amber-300 border-amber-500/40";
+      }
+      if (sig === "VETO_PROTECTION") {
+        return "bg-purple-500/20 text-purple-300 border-purple-500/50";
+      }
+      return "bg-slate-800 text-slate-300 border-slate-700";
+    }
+
+    function scoreBarColor(score) {
+      if (score >= 20) return "bg-emerald-400";
+      if (score <= -20) return "bg-rose-400";
+      return "bg-amber-400";
+    }
+
+    function renderAgents(agents) {
+      const grid = document.getElementById("agentsGrid");
+      grid.innerHTML = (agents || []).map((ag) => {
+        const badgeCls = signalBadgeClass(ag.signal);
+        const barCls = scoreBarColor(ag.score);
+        const label = SIGNAL_PT[ag.signal] || ag.signal;
+        const reasonsHtml = (ag.reasons || [])
+          .map((r) => `<li class="flex items-start gap-1.5"><span class="text-emerald-400 mt-0.5">•</span><span>${escapeHtml(r)}</span></li>`)
+          .join("");
+        return `
+          <div class="surface-card rounded-xl p-4 flex flex-col justify-between space-y-3">
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <h3 class="text-sm font-bold text-white">${escapeHtml(ag.agent)}</h3>
+                  <p class="text-[11px] text-slate-400">${escapeHtml(ag.role)}</p>
+                </div>
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded border shrink-0 ${badgeCls}">
+                  ${escapeHtml(label)}
+                </span>
+              </div>
+              <div class="mt-3">
+                <div class="flex justify-between text-[11px] text-slate-400 mb-1 mono">
+                  <span>Confiança: ${Number(ag.confidence || 0)}%</span>
+                  <span>Nota: ${ag.score > 0 ? "+" : ""}${Number(ag.score || 0)}</span>
+                </div>
+                <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div class="h-full ${barCls}" style="width: ${Number(ag.confidence || 0)}%"></div>
+                </div>
+              </div>
+            </div>
+            <ul class="text-xs text-slate-300 space-y-1.5 pt-2 border-t border-slate-800/80">${reasonsHtml}</ul>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderChart(chartData) {
+      const container = document.getElementById("equityChartContainer");
+      if (!container || typeof LightweightCharts === "undefined") return;
+      const times = chartData.timestamps || [];
+      const rawVals = chartData.equity_curve_raw || [];
+      const guardedVals = chartData.equity_curve_guarded || [];
+
+      const ptsRaw = [];
+      const ptsGuarded = [];
+      let prevTs = -1;
+      for (let i = 0; i < times.length; i++) {
+        const t = Number(times[i]);
+        if (t <= prevTs) continue;
+        prevTs = t;
+        ptsRaw.push({ time: t, value: Number(rawVals[i]) });
+        ptsGuarded.push({ time: t, value: Number(guardedVals[i]) });
+      }
+      if (!ptsRaw.length) return;
+
+      if (!equityChart) {
+        equityChart = LightweightCharts.createChart(container, {
+          width: container.clientWidth || 640,
+          height: 288,
+          layout: {
+            background: { color: "#060911" },
+            textColor: "#94a3b8",
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: 11,
+          },
+          grid: {
+            vertLines: { color: "rgba(51, 65, 85, 0.25)" },
+            horzLines: { color: "rgba(51, 65, 85, 0.25)" },
+          },
+          timeScale: { borderColor: "#1e293b", timeVisible: true },
+          rightPriceScale: { borderColor: "#1e293b" },
+        });
+        rawLineSeries = equityChart.addLineSeries({
+          color: "#94a3b8",
+          lineWidth: 2,
+          lineStyle: 2,
+          title: "Sem Filtro",
+        });
+        guardedLineSeries = equityChart.addLineSeries({
+          color: "#10b981",
+          lineWidth: 2.5,
+          title: "Com Filtro",
+        });
+        window.addEventListener("resize", () => {
+          if (equityChart && container.clientWidth > 0) {
+            equityChart.applyOptions({ width: container.clientWidth });
+          }
+        });
+      }
+      rawLineSeries.setData(ptsRaw);
+      guardedLineSeries.setData(ptsGuarded);
+      equityChart.timeScale().fitContent();
+    }
+
+    function renderAbTable(raw, guarded) {
+      const rows = [
+        ["Capital Final", "$" + fmtNum(raw.final_equity_usdt), "$" + fmtNum(guarded.final_equity_usdt)],
+        ["Retorno Total", `${raw.total_return_pct > 0 ? "+" : ""}${raw.total_return_pct}%`, `${guarded.total_return_pct > 0 ? "+" : ""}${guarded.total_return_pct}%`],
+        ["Queda Máxima", `-${raw.max_drawdown_pct}%`, `-${guarded.max_drawdown_pct}%`],
+        ["Índice Sharpe", raw.sharpe_ratio, guarded.sharpe_ratio],
+        ["Acerto", `${raw.win_rate_pct}%`, `${guarded.win_rate_pct}%`],
+        ["Fator de Lucro", raw.profit_factor, guarded.profit_factor],
+        ["Operações", raw.total_trades, guarded.total_trades],
+      ];
+      document.getElementById("abTableBody").innerHTML = rows.map(([label, a, b]) => `
+        <tr>
+          <td class="py-2.5 px-3 text-slate-300 font-sans">${escapeHtml(label)}</td>
+          <td class="py-2.5 px-3 text-right text-slate-400">${escapeHtml(a)}</td>
+          <td class="py-2.5 px-3 text-right text-emerald-300 font-semibold">${escapeHtml(b)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderLicenseBadge(info) {
+      if (!info) return;
+      const badge = document.getElementById("planBadge");
+      const tierText = (info.plan_name || info.tier || "TRIAL").toUpperCase();
+      if (info.unlimited) {
+        badge.textContent = `${tierText} • ILIMITADO`;
+        badge.className = "px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 mono";
+      } else {
+        badge.textContent = `${info.tier} • ${info.uses_remaining} USOS RESTANTES`;
+        badge.className = "px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 mono";
+      }
+      localStorage.setItem("qg_license_info", JSON.stringify(info));
+    }
+
+    async function runAnalysis() {
+      const btn = document.getElementById("runBtn");
+      const quotaBox = document.getElementById("quotaBanner");
+      btn.disabled = true;
+      btn.textContent = "Analisando...";
+      quotaBox.classList.add("hidden");
+
+      const payload = {
+        exchange: document.getElementById("exchange").value,
+        symbol: document.getElementById("symbol").value,
+        timeframe: document.getElementById("timeframe").value,
+        strategy: document.getElementById("strategy").value,
+        capital_usdt: Number(document.getElementById("capital").value) || 10000,
+        available_capital_brl: Number(document.getElementById("availableCapitalBrl").value) || 10000,
+        risk_per_trade_pct: Number(document.getElementById("riskPct").value) || 1.0,
+        monthly_contribution_brl: Number(document.getElementById("monthlyContribution").value) || 500,
+        monthly_expenses_brl: Number(document.getElementById("monthlyExpenses").value) || 3000,
+        has_emergency_fund: document.getElementById("hasEmergencyFund").checked,
+      };
+
+      try {
+        const res = await apiFetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.status === 402) {
+          const errBody = await res.json().catch(() => ({}));
+          document.getElementById("quotaBannerText").textContent =
+            errBody.detail || "Suas 3 análises gratuitas acabaram. Seus alertas EUR/BRL e histórico continuam acessíveis.";
+          quotaBox.classList.remove("hidden");
+          loadUserHistory();
+          loadAlerts();
+          return;
+        }
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+
+        if (data.license_info) renderLicenseBadge(data.license_info);
+
+        const m = data.market;
+        const c = data.committee;
+        const b = data.backtest;
+        const cs = data.crisis_shield;
+        const dca = data.smart_dca;
+        const plan = c.execution_plan;
+        activeCurrencySymbol = m.currency_symbol || (m.symbol.endsWith("/BRL") ? "R$" : "$");
+
+        const dsBadge = document.getElementById("dataSourceBadge");
+        dsBadge.textContent = m.is_live
+          ? `AO VIVO • ${m.served_exchange.toUpperCase()}`
+          : `MODO SIMULAÇÃO`;
+        dsBadge.className = m.is_live
+          ? "px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 mono"
+          : "px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 mono";
+
+        document.getElementById("engineBadge").textContent = c.engine_name || "Scudex Quant v2";
+
+        const fb = document.getElementById("fallbackBanner");
+        if (m.fallback_reason) { fb.textContent = m.fallback_reason; fb.classList.remove("hidden"); }
+        else fb.classList.add("hidden");
+
+        const verdictEl = document.getElementById("verdictBadge");
+        verdictEl.textContent = VERDICT_PT[c.verdict] || c.verdict;
+        verdictEl.className = `text-base sm:text-lg font-bold px-3.5 py-1.5 rounded-lg border ${signalBadgeClass(c.verdict)}`;
+        document.getElementById("regimePill").textContent = `Clima: ${REGIME_PT[c.regime] || c.regime}`;
+        document.getElementById("marketPairLabel").textContent = `${m.symbol} • ${m.timeframe}`;
+        document.getElementById("lastPrice").textContent = fmtPrice(m.last_price);
+
+        const chg = Number(m.change_24h_pct);
+        const chgEl = document.getElementById("priceChange");
+        chgEl.textContent = `24h: ${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%`;
+        chgEl.className = `text-xs mono ${chg >= 0 ? "text-emerald-400" : "text-rose-400"}`;
+
+        document.getElementById("executiveSummary").textContent = c.executive_summary;
+        document.getElementById("combinedScore").textContent = `${c.combined_score > 0 ? "+" : ""}${c.combined_score}`;
+        document.getElementById("rsiValue").textContent = m.latest_indicators.RSI_14;
+        document.getElementById("spreadValue").textContent = `${m.microstructure.bid_ask_spread_bps} bps`;
+        document.getElementById("imbalanceValue").textContent = `${(m.microstructure.orderbook_imbalance * 100).toFixed(1)}%`;
+
+        document.getElementById("execStatusPill").textContent = plan.is_executable ? "Simulação" : "Protegido (0)";
+        document.getElementById("planEntry").textContent = fmtPrice(plan.entry_price);
+        document.getElementById("planStop").textContent = fmtPrice(plan.stop_loss);
+        document.getElementById("planTp1").textContent = fmtPrice(plan.take_profit_1);
+        document.getElementById("planTp2").textContent = fmtPrice(plan.take_profit_2);
+        document.getElementById("planSizeUsdt").textContent = fmtPrice(plan.position_size_usdt);
+        document.getElementById("planMaxLoss").textContent = fmtPrice(plan.max_loss_usdt);
+        document.getElementById("planSizeAsset").textContent = `${plan.position_size_asset} ${m.symbol.split("/")[0]}`;
+        document.getElementById("planStopDist").textContent = `${plan.stop_distance_pct}%`;
+
+        renderAgents(c.agents);
+
+        if (cs && dca) {
+          document.getElementById("crisisSummary").textContent = cs.crisis_summary;
+          const alertBadge = document.getElementById("alertBadge");
+          alertBadge.textContent = cs.alert_label;
+          if (cs.alert_level === "ALERTA_VERMELHO_SOBREVIVENCIA") {
+            alertBadge.className = "px-3 py-1 rounded-full border font-semibold bg-rose-500/15 text-rose-300 border-rose-500/40";
+          } else if (cs.alert_level === "ALERTA_AMARELO_TRANSICAO") {
+            alertBadge.className = "px-3 py-1 rounded-full border font-semibold bg-amber-500/15 text-amber-300 border-amber-500/40";
+          } else {
+            alertBadge.className = "px-3 py-1 rounded-full border font-semibold bg-emerald-500/15 text-emerald-300 border-emerald-500/40";
+          }
+          document.getElementById("runwayBadge").textContent = `Fôlego: ${cs.runway_months} meses`;
+
+          const winBadge = document.getElementById("windowBadge");
+          winBadge.textContent = cs.window_label;
+          if (cs.window_status === "JANELA_DESCONTO") {
+            winBadge.className = "inline-block text-xs font-bold px-2.5 py-1 rounded-lg border bg-emerald-500/15 text-emerald-300 border-emerald-500/40";
+          } else if (cs.window_status === "ESTICADO_SEGURE_IMPULSO") {
+            winBadge.className = "inline-block text-xs font-bold px-2.5 py-1 rounded-lg border bg-rose-500/15 text-rose-300 border-rose-500/40";
+          } else {
+            winBadge.className = "inline-block text-xs font-bold px-2.5 py-1 rounded-lg border bg-amber-500/15 text-amber-300 border-amber-500/40";
+          }
+          document.getElementById("windowAdvice").textContent = cs.window_advice;
+          document.getElementById("suggestedTodayBrl").textContent = "R$ " + fmtNum(cs.suggested_today_brl);
+
+          document.getElementById("dcaDaysBadge").textContent = `${dca.days_covered} dias reais`;
+          document.getElementById("dcaAvgFixed").textContent = fmtPrice(dca.avg_price_dca);
+          document.getElementById("dcaAvgSmart").textContent = fmtPrice(dca.avg_price_smart_dca);
+          document.getElementById("dcaFinalFixed").textContent = "R$ " + fmtNum(dca.final_value_dca_brl);
+          document.getElementById("dcaFinalSmart").textContent = "R$ " + fmtNum(dca.final_value_smart_dca_brl);
+          document.getElementById("dcaCashLeft").textContent =
+            `Caixa livre: R$ ${fmtNum(dca.cash_reserve_left_brl)} (${dca.final_value_diff_pct >= 0 ? "+" : ""}${dca.final_value_diff_pct}%)`;
+          document.getElementById("antiScamBanner").textContent = cs.anti_scam_warning;
+
+          document.getElementById("bucketsGrid").innerHTML = (cs.buckets || []).map((bk) => `
+            <div class="bg-[#060911] border border-slate-800 rounded-xl p-3.5 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-emerald-300 mono">${Number(bk.pct)}%</span>
+                <span class="text-[11px] text-slate-400 mono">R$ ${fmtNum(bk.monthly_brl)}/mês</span>
+              </div>
+              <div class="text-xs font-semibold text-white">${escapeHtml(bk.name)}</div>
+              <div class="text-sm font-bold text-cyan-300 mono">R$ ${fmtNum(bk.amount_brl)}</div>
+              <p class="text-[11px] text-slate-400 leading-snug">${escapeHtml(bk.purpose)}</p>
+            </div>
+          `).join("");
+        }
+
+        document.getElementById("strategyDesc").textContent = `${b.strategy_name} — ${b.bars_evaluated} períodos avaliados`;
+        document.getElementById("methodologyNote").textContent = b.methodology_note || "";
+        document.getElementById("blockedTradesBadge").textContent =
+          `Entradas bloqueadas: ${b.mode_b_guarded.blocked_bad_trades} (${b.mode_b_guarded.blocked_losing_trades} perdedores)`;
+        document.getElementById("ddSavedBadge").textContent = `Drawdown reduzido: ${b.mode_b_guarded.drawdown_saved_pct}%`;
+        renderChart(b.chart);
+        renderAbTable(b.mode_a_raw, b.mode_b_guarded);
+
+        document.getElementById("ccxtPayloadPre").textContent = JSON.stringify(c.ccxt_order_payload, null, 2);
+        document.getElementById("telegramPreviewPre").textContent = c.telegram_alert_preview;
+        document.getElementById("whatsappPreviewPre").textContent = data.whatsapp_report || c.telegram_alert_preview;
+        loadUserHistory();
+      } catch (err) {
+        const fb = document.getElementById("fallbackBanner");
+        fb.textContent = "Aviso: " + err.message;
+        fb.classList.remove("hidden");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Atualizar Análise";
+      }
+    }
+
+    // --- Alerts & Telegram Link ---
+    async function loadAlerts() {
+      const tbody = document.getElementById("alertsTableBody");
+      try {
+        const res = await apiFetch("/api/alerts");
+        if (!res.ok) return;
+        const data = await res.json();
+        document.getElementById("alertsTierPill").textContent = `Plano: ${data.plan_tier || "TRIAL"}`;
+        if (data.telegram_chat_id) {
+          document.getElementById("profileTelegramInput").value = data.telegram_chat_id;
+        }
+        const alerts = data.alerts || [];
+        if (!alerts.length) {
+          tbody.innerHTML = `<tr><td colspan="5" class="py-3 text-center text-slate-500 font-sans">Nenhum alerta criado ainda. Configure acima!</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = alerts.map((a) => `
+          <tr>
+            <td class="py-2 px-3 text-white font-semibold">${escapeHtml(a.symbol)}</td>
+            <td class="py-2 px-3 text-slate-300 font-sans">${a.direction === "ABOVE" ? "Subir para >=" : "Cair para <="}</td>
+            <td class="py-2 px-3 text-right text-emerald-300">R$ ${Number(a.target_rate).toLocaleString("pt-BR", { minimumFractionDigits: 4 })}</td>
+            <td class="py-2 px-3 text-cyan-300">${escapeHtml(a.channel)}</td>
+            <td class="py-2 px-3 text-right">
+              <button type="button" onclick="deleteAlert(${Number(a.id)})" class="text-rose-400 hover:underline font-sans">Remover</button>
+            </td>
+          </tr>
+        `).join("");
+      } catch (_) {}
+    }
+
+    async function deleteAlert(id) {
+      try {
+        const res = await apiFetch(`/api/alerts/${id}`, { method: "DELETE" });
+        if (res.ok) loadAlerts();
+      } catch (_) {}
+    }
+
+    document.getElementById("linkTelegramForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const box = document.getElementById("tgLinkStatus");
+      box.classList.add("hidden");
+      try {
+        const res = await apiFetch("/api/profile/telegram", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ telegram_chat_id: document.getElementById("profileTelegramInput").value.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+        box.className = "text-xs px-3 py-2 rounded-lg border bg-emerald-500/15 border-emerald-500/30 text-emerald-300";
+        box.textContent = data.telegram_chat_id
+          ? `Telegram Chat ID (${data.telegram_chat_id}) salvo na sua conta!`
+          : "Telegram Chat ID removido da conta.";
+        box.classList.remove("hidden");
+      } catch (err) {
+        box.className = "text-xs px-3 py-2 rounded-lg border bg-rose-500/15 border-rose-500/30 text-rose-300";
+        box.textContent = err.message;
+        box.classList.remove("hidden");
+      }
+    });
+
+    document.getElementById("createAlertForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const box = document.getElementById("alertActionStatus");
+      box.classList.add("hidden");
+      try {
+        const res = await apiFetch("/api/alerts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            symbol: document.getElementById("alertSymbol").value,
+            direction: document.getElementById("alertDirection").value,
+            target_rate: Number(document.getElementById("alertTargetRate").value),
+            channel: "telegram",
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+        box.className = "text-xs px-3 py-2 rounded-lg border bg-emerald-500/15 border-emerald-500/30 text-emerald-300";
+        box.textContent = "Alerta criado com sucesso!";
+        box.classList.remove("hidden");
+        loadAlerts();
+      } catch (err) {
+        box.className = "text-xs px-3 py-2 rounded-lg border bg-rose-500/15 border-rose-500/30 text-rose-300";
+        box.textContent = err.message;
+        box.classList.remove("hidden");
+      }
+    });
+
+    async function sendToTelegram() {
+      const btn = document.getElementById("tgSendBtn");
+      const statusBox = document.getElementById("tgStatusMsg");
+      const text = document.getElementById("telegramPreviewPre").textContent || "";
+      btn.disabled = true;
+      btn.textContent = "Enviando...";
+      statusBox.classList.add("hidden");
+      try {
+        const res = await apiFetch("/api/telegram/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        const data = await res.json();
+        statusBox.classList.remove("hidden");
+        if (!res.ok) {
+          statusBox.className = "text-xs px-3 py-2 rounded-lg border bg-amber-500/15 border-amber-500/30 text-amber-300";
+          statusBox.textContent = data.detail || "Não foi possível enviar.";
+        } else if (data.sent) {
+          statusBox.className = "text-xs px-3 py-2 rounded-lg border bg-emerald-500/15 border-emerald-500/30 text-emerald-300";
+          statusBox.textContent = `Enviado para seu Telegram! (id: ${data.message_id})`;
+        } else {
+          statusBox.className = "text-xs px-3 py-2 rounded-lg border bg-amber-500/15 border-amber-500/30 text-amber-300";
+          statusBox.textContent = data.reason || "Telegram não configurado no servidor.";
+        }
+      } catch (err) {
+        statusBox.classList.remove("hidden");
+        statusBox.className = "text-xs px-3 py-2 rounded-lg border bg-rose-500/15 border-rose-500/30 text-rose-300";
+        statusBox.textContent = "Erro: " + err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Enviar para Meu Telegram";
+      }
+    }
+
+    function copyWhatsappReport() {
+      const text = document.getElementById("whatsappPreviewPre").textContent || "";
+      if (!text) return;
+      navigator.clipboard.writeText(text);
+      const box = document.getElementById("waStatusMsg");
+      box.textContent = "Boletim copiado.";
+      box.classList.remove("hidden");
+    }
+
+    function openWhatsappDirect() {
+      const text = document.getElementById("whatsappPreviewPre").textContent || "";
+      if (text) window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
+    }
+
+    async function loadUserHistory() {
+      const tbody = document.getElementById("historyTableBody");
+      try {
+        const res = await apiFetch("/api/history");
+        if (!res.ok) return;
+        const data = await res.json();
+        const rows = data.history || [];
+        if (!rows.length) {
+          tbody.innerHTML = `<tr><td colspan="6" class="py-3 text-center text-slate-500 font-sans">Nenhuma análise gravada ainda nesta conta.</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = rows.map((r) => `
+          <tr>
+            <td class="py-2 px-3 text-slate-400">${escapeHtml(String(r.created_at || "").slice(0, 16).replace("T", " "))}</td>
+            <td class="py-2 px-3 text-white font-semibold">${escapeHtml(r.symbol)} (${escapeHtml(r.timeframe)})</td>
+            <td class="py-2 px-3 text-cyan-300 font-sans">${escapeHtml(VERDICT_PT[r.verdict] || r.verdict)}</td>
+            <td class="py-2 px-3 text-slate-300 font-sans">${escapeHtml(REGIME_PT[r.regime] || r.regime)}</td>
+            <td class="py-2 px-3 text-right text-slate-200">${Number(r.last_price).toLocaleString("pt-BR", { maximumFractionDigits: 4 })}</td>
+            <td class="py-2 px-3 text-right text-emerald-300 font-bold">-${Number(r.drawdown_saved_pct).toFixed(2)}%</td>
+          </tr>
+        `).join("");
+      } catch (_) {}
+    }
+
+    document.getElementById("analyzeForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      runAnalysis();
+    });
+
+    try {
+      const cachedInfo = localStorage.getItem("qg_license_info");
+      if (cachedInfo) renderLicenseBadge(JSON.parse(cachedInfo));
+    } catch (_) {}
+
+    try {
+      const pendingRaw = sessionStorage.getItem("qg_pending_alert");
+      if (pendingRaw) {
+        const draft = JSON.parse(pendingRaw);
+        sessionStorage.removeItem("qg_pending_alert");
+        if (draft.symbol) document.getElementById("alertSymbol").value = draft.symbol;
+        if (draft.direction) document.getElementById("alertDirection").value = draft.direction;
+        if (draft.target_rate) document.getElementById("alertTargetRate").value = draft.target_rate;
+        const alertBox = document.getElementById("alertActionStatus");
+        if (alertBox) {
+          alertBox.className = "text-xs px-3 py-2 rounded-lg border bg-cyan-500/15 border-cyan-500/35 text-cyan-200";
+          alertBox.textContent = "Alerta pré-configurado carregado da página inicial. Clique em 'Criar Alerta' para salvar!";
+          alertBox.classList.remove("hidden");
+        }
+        switchWorkspaceTab("alerts");
+      } else if (window.location.hash === "#alerts") {
+        switchWorkspaceTab("alerts");
+      }
+    } catch (_) {}
+
+    async function loadTelegramBotLink() {
+      const box = document.getElementById("appTelegramBotLink");
+      if (!box) return;
+      try {
+        const res = await fetch("/api/health");
+        if (!res.ok) return;
+        const data = await res.json();
+        const uname = String(data.telegram_bot_username || "").trim().replace(/^@/, "");
+        if (uname) {
+          box.innerHTML = `<a href="https://t.me/${encodeURIComponent(uname)}" target="_blank" rel="noopener noreferrer" class="inline-block px-3 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/35 text-xs font-semibold transition">Abrir @${escapeHtml(uname)} no Telegram</a>`;
+        }
+      } catch (_) {}
+    }
+
+    runAnalysis();
+    loadAlerts();
+    loadTelegramBotLink();
+  </script>
+</body>
+</html>
